@@ -19,6 +19,7 @@ namespace Repository.UnitOfwork
         private IGenericRepository<OrderDetail> orderDetailRepo;
         private IGenericRepository<Role> roleRepo;
         private IGenericRepository<Token> tokenRepo;
+        private IGenericRepository<Cart> cartRepo;
         private readonly BStoreDBContext context;
         private bool dispose = false;
 
@@ -116,6 +117,20 @@ namespace Repository.UnitOfwork
                     tokenRepo = new GenericRepository<Token>(context);
                 }
                 return tokenRepo;
+
+            }
+            set => throw new NotImplementedException();
+        }
+
+        public IGenericRepository<Cart> CartRepo
+        {
+            get
+            {
+                if (cartRepo == null)
+                {
+                    cartRepo = new GenericRepository<Cart>(context);
+                }
+                return cartRepo;
 
             }
             set => throw new NotImplementedException();
