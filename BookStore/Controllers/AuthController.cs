@@ -30,7 +30,11 @@ namespace BookStore.Controllers
 
             if (user == null)
             {
-                return Unauthorized();
+                return Unauthorized(new { message = "Invalid email or password" });
+            }
+            if (user.UserStatus == false)
+            {
+                return Unauthorized(new { message = "User has been banned" });
             }
 
             var token = _jwtService.GenerateToken(user);
@@ -39,7 +43,20 @@ namespace BookStore.Controllers
             _jwtService.SaveToken(user, token, DateTime.Now.AddMinutes(double.Parse(_configuration["Jwt:ExpiryMinutes"])));
            
 
-            return Ok(new { Token = token, RefreshToken = refreshToken });
+            return Ok(
+                new 
+                { 
+                    Token = token, 
+                    RefreshToken = refreshToken,
+                    UserInfo = new
+                    {
+                        UserId = user.UserId,
+                        Email = user.Email,
+                        Phone = user.Phone,
+                        Address = user.Address,
+                        UserStatus = user.UserStatus,
+                    }
+                });
         }
 
 
