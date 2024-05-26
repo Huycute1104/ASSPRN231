@@ -5,21 +5,21 @@ using Repository.UnitOfwork;
 
 namespace BookStore.Controllers
 {
-    [Route("api/books")]
+    [Route("api/roles")]
     [ApiController]
-    public class BookController : ControllerBase
+    public class RoleController : ControllerBase
     {
         private readonly IUnitOfwork unitOfwork;
 
-        public BookController(IUnitOfwork unitOfwork)
+        public RoleController(IUnitOfwork unitOfwork)
         {
             this.unitOfwork = unitOfwork;
         }
         [HttpGet]
-        [Authorize(Roles = "Admin,Customer")]
+        [Authorize]
         public IActionResult GetBook()
         {
-            return Ok(unitOfwork.BookRepo.Get());
+            return Ok(unitOfwork.RoleRepo.Get());
         }
     }
 }
