@@ -8,6 +8,8 @@ namespace BookStore.Service
         string GenerateToken(User user);
         string GenerateRefreshToken(User user);
         public void SaveToken(User user, string tokenString, DateTime expiryDate);
-        ClaimsPrincipal GetPrincipalFromExpiredToken(string token);
+        public void Logout(string tokenString);
+        public bool IsTokenValid(string tokenString);
+    /*    ClaimsPrincipal GetPrincipalFromExpiredToken(string token);*/
     }
 }

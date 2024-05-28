@@ -1,4 +1,5 @@
 using BookStore.DependencyInjection;
+using BookStore.Middleware;
 using BookStore.Service;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
@@ -53,6 +54,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+app.UseMiddleware<TokenValidationMiddleware>();
 
 app.UseAuthentication();
 

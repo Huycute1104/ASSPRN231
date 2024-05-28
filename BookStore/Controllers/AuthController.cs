@@ -2,6 +2,7 @@
 using BookStore.Service;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Repository.Models;
 using Repository.UnitOfwork;
 using System.Security.Claims;
 
@@ -38,16 +39,10 @@ namespace BookStore.Controllers
             }
 
             var token = _jwtService.GenerateToken(user);
-            var refreshToken = _jwtService.GenerateRefreshToken(user);
-
-            _jwtService.SaveToken(user, token, DateTime.Now.AddMinutes(double.Parse(_configuration["Jwt:ExpiryMinutes"])));
-           
-
+            var refreshToken = _jwtService.GenerateRefreshToken(user);     
             return Ok(
                 new 
-                { 
-                    Token = token, 
-                    RefreshToken = refreshToken,
+                {
                     UserInfo = new
                     {
                         UserId = user.UserId,
@@ -55,40 +50,41 @@ namespace BookStore.Controllers
                         Phone = user.Phone,
                         Address = user.Address,
                         UserStatus = user.UserStatus,
-                    }
+                        RoleId = user.RoleId,
+                    },
+                    Token = token, 
+                    RefreshToken = refreshToken
+                    
                 });
         }
-
-
         [HttpPost("logout")]
-        public IActionResult Logout([FromBody] RevokeTokenModel model)
+        public IActionResult Logout()
         {
-            var principal = _jwtService.GetPrincipalFromExpiredToken(model.Token);
-            if (principal == null)
+            var tokenString = Request.Headers["Authorization"].FirstOrDefault()?.Split(" ").Last();
+
+            if (string.IsNullOrEmpty(tokenString))
             {
                 return BadRequest("Invalid token");
             }
 
-            var userIdClaim = principal.FindFirst(ClaimTypes.NameIdentifier);
-            if (userIdClaim == null || !int.TryParse(userIdClaim.Value, out int userId))
+            var token = _unitOfWork.TokenRepo.Get().FirstOrDefault(t => t.Token1 == tokenString);
+
+            if (token == null)
             {
-                return BadRequest("Invalid user ID claim");
+                return BadRequest("Token not found");
             }
 
-            var tokens = _unitOfWork.TokenRepo.Get()
-                                .Where(t => t.UserId == userId && t.IsActive).ToList();
-
-            foreach (var token in tokens)
-            {
-                token.IsActive = false;
-                _unitOfWork.TokenRepo.Update(token);
-            }
-
+            // Cập nhật trạng thái IsActive của token
+            token.IsActive = false;
+            _unitOfWork.TokenRepo.Update(token);
             _unitOfWork.Save();
-            return NoContent();
+
+            return Ok("Logged out successfully");
         }
-
-
     }
+
+
+
+
 }
 

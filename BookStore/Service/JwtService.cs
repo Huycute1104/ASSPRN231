@@ -21,41 +21,52 @@ namespace BookStore.Service
             _unitOfWork = unitOfWork;
         }
 
+        public bool IsTokenValid(string tokenString)
+        {
+            var token = _unitOfWork.TokenRepo.Get().FirstOrDefault(t => t.Token1 == tokenString);
+            if (token != null && token.IsActive && token.ExpiryDate > DateTime.Now)
+            {
+                return true;
+            }
+            return false;
+        }
+
+
         public string GenerateToken(User user)
         {
             var claims = new List<Claim>
+    {
+        new Claim(JwtRegisteredClaimNames.Sub, user.Email),
+        new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+        new Claim(ClaimTypes.NameIdentifier, user.UserId.ToString())
+    };
+
+            // Lấy danh sách roles của user
+            var userRole = _unitOfWork.RoleRepo.Get().FirstOrDefault(r => r.RoleId == user.RoleId);
+            if (userRole != null)
             {
-                new Claim(JwtRegisteredClaimNames.Sub, user.Email),
-                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-                new Claim(ClaimTypes.NameIdentifier, user.UserId.ToString())
-            };
-            List<Role> roles = _unitOfWork.RoleRepo.Get().ToList();
-            for (int i = 0; i < roles.Count; i++)
-            {
-                Role role = roles[i];
-                if (user.RoleId == role.RoleId)
-                {
-                    claims.Add(new Claim(ClaimTypes.Role, role.RoleName));
-                    break;
-                }
+                claims.Add(new Claim(ClaimTypes.Role, userRole.RoleName));
             }
 
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]));
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+            var expiryMinutes = double.Parse(_configuration["Jwt:ExpiryMinutes"]);
+            var expiryDate = DateTime.Now.AddMinutes(expiryMinutes);
 
             var token = new JwtSecurityToken(
                 issuer: _configuration["Jwt:Issuer"],
                 audience: _configuration["Jwt:Audience"],
                 claims: claims,
-                expires: DateTime.Now.AddMinutes(double.Parse(_configuration["Jwt:ExpiryMinutes"])),
+                expires: expiryDate,
                 signingCredentials: creds
             );
 
             var tokenString = new JwtSecurityTokenHandler().WriteToken(token);
-            SaveToken(user, tokenString, DateTime.Now.AddMinutes(double.Parse(_configuration["Jwt:ExpiryMinutes"])));
+            SaveToken(user, tokenString, expiryDate);
 
             return tokenString;
         }
+
 
 
         public string GenerateRefreshToken(User user)
@@ -80,7 +91,7 @@ namespace BookStore.Service
             );
 
             var refreshTokenString = new JwtSecurityTokenHandler().WriteToken(refreshToken);
-            SaveToken(user, refreshTokenString, DateTime.Now.AddDays(double.Parse(_configuration["Jwt:RefreshTokenExpiryDays"])));
+            //SaveToken(user, refreshTokenString, DateTime.Now.AddDays(double.Parse(_configuration["Jwt:RefreshTokenExpiryDays"])));
 
             return refreshTokenString;
         }
@@ -105,7 +116,7 @@ namespace BookStore.Service
             _unitOfWork.Save();
         }
 
-        public ClaimsPrincipal GetPrincipalFromExpiredToken(string token)
+      /*  public ClaimsPrincipal GetPrincipalFromExpiredToken(string token)
         {
             var tokenValidationParameters = new TokenValidationParameters
             {
@@ -129,6 +140,17 @@ namespace BookStore.Service
             }
 
             return principal;
+        }*/
+
+        public void Logout(string tokenString)
+        {
+            var token = _unitOfWork.TokenRepo.Get().FirstOrDefault(t => t.Token1 == tokenString);
+            if (token != null)
+            {
+                token.IsActive = false;
+                _unitOfWork.TokenRepo.Update(token);
+                _unitOfWork.Save();
+            }
         }
     }
 }
